@@ -57,6 +57,7 @@ use Controllers\Web\WebProductController;
 use Controllers\Web\WebCategoryController;
 use Middlewares\AuthMiddleware;
 use Middlewares\ApiAuthMiddleware;
+use Helpers\Access;
 
 $auth = new ApiAuthController();
 $apiUserController = new ApiUserController();
@@ -66,6 +67,8 @@ $webUserController = new WebUserController();
 $views = new WebViewController();
 $webProductController = new WebProductController();
 $webCategoryController = new WebCategoryController();
+
+// NOTE: session-based access checks are handled by Helpers\Access
 
 // Login routes
 if ($uri === '/login') {
@@ -127,24 +130,28 @@ if (strpos($uri, '/products') === 0) {
 	}
 	// Lista pública para usuários autenticados
 	if ($uri === '/products' && $method === 'GET') {
+		Access::requireWebRole(['admin', 'vendedor']);
 		$webProductController->index();
 		exit;
 	}
 	// Ações de gerenciamento exigem admin
-	if ($user['role_id'] != 99) {
-		http_response_code(403);
-		echo 'Acesso negado.';
-		exit;
-	}
+	// if ($user['role_id'] != 99) {
+	// 	http_response_code(403);
+	// 	echo 'Acesso negado.';
+	// 	exit;
+	// }
 	if ($uri === '/products' && $method === 'POST') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->store();
 		exit;
 	}
 	if (preg_match('#^/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->delete($m[1]);
 		exit;
 	}
@@ -159,24 +166,28 @@ if (strpos($uri, '/categories') === 0) {
 	}
 	// Lista pública para usuários autenticados
 	if ($uri === '/categories' && $method === 'GET') {
+		Access::requireWebRole(['admin', 'vendedor']);
 		$webCategoryController->index();
 		exit;
 	}
 	// Ações de gerenciamento exigem admin
-	if ($user['role_id'] != 99) {
-		http_response_code(403);
-		echo 'Acesso negado.';
-		exit;
-	}
+	// if ($user['role_id'] != 99) {
+	// 	http_response_code(403);
+	// 	echo 'Acesso negado.';
+	// 	exit;
+	// }
 	if ($uri === '/categories' && $method === 'POST') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->store();
 		exit;
 	}
 	if (preg_match('#^/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->delete($m[1]);
 		exit;
 	}
@@ -191,8 +202,10 @@ if (strpos($uri, '/api/') === 0) {
 		echo json_encode(['error' => 'Token invalido ou ausente']);
 		exit;
 	}
-	// Permissão: apenas admin pode acessar /api/users
+	// Flags para checagens rápidas no bloco de API
 	$isAdmin = ApiAuthMiddleware::checkRole(['admin']);
+	$isVendedor = ApiAuthMiddleware::checkRole(['vendedor']);
+	// Permissão: apenas admin pode acessar /api/users
 	if ($uri === '/api/users' && $method === 'GET') {
 		if (!$isAdmin) {
 			http_response_code(403);
@@ -245,7 +258,6 @@ if (strpos($uri, '/api/') === 0) {
 	}
 
 	// API Produtos
-	$isVendedor = ApiAuthMiddleware::checkRole(['vendedor']);
 	if ($uri === '/api/products' && $method === 'GET') {
 		$apiProductController->index();
 		exit;
@@ -259,32 +271,14 @@ if (strpos($uri, '/api/') === 0) {
 		exit;
 	}
 	if ($uri === '/api/products/create' && $method === 'POST') {
-		if (!$isAdmin && !$isVendedor) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
 		$apiProductController->store();
 		exit;
 	}
 	if (preg_match('#^/api/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		if (!$isAdmin && !$isVendedor) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
 		$apiProductController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/api/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		if (!$isAdmin && !$isVendedor) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
 		$apiProductController->delete($m[1]);
 		exit;
 	}
@@ -303,32 +297,14 @@ if (strpos($uri, '/api/') === 0) {
 		exit;
 	}
 	if ($uri === '/api/categories/create' && $method === 'POST') {
-		if (!$isAdmin && !$isVendedor) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
 		$apiCategoryController->store();
 		exit;
 	}
 	if (preg_match('#^/api/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		if (!$isAdmin && !$isVendedor) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
 		$apiCategoryController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/api/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		if (!$isAdmin && !$isVendedor) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
 		$apiCategoryController->delete($m[1]);
 		exit;
 	}
