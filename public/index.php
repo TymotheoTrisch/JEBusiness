@@ -78,6 +78,30 @@ $webStockMovementsController = new WebStockMovementsController();
 $webProductController = new WebProductController();
 $webCategoryController = new WebCategoryController();
 
+// Simple router: register route files and attempt dispatch. If a route
+// is handled by the router it will exit here — otherwise legacy routing
+// blocks below still act as fallback.
+$router = new Core\Router();
+
+// If request targets API paths, perform a token check early and return 401 JSON
+// if missing/invalid. Route files can still perform finer-grained role checks.
+if (strpos($uri, '/api/') === 0) {
+	$apiUser = ApiAuthMiddleware::check();
+	if (!$apiUser) {
+		http_response_code(401);
+		header('Content-Type: application/json');
+		echo json_encode(['error' => 'Token invalido ou ausente']);
+		exit;
+	}
+}
+
+// Load organized route files (bootstrap will include per-resource route files)
+require __DIR__ . '/../src/Routes/bootstrap.php';
+
+if ($router->dispatch($uri, $method)) {
+	exit;
+}
+
 // Login routes
 if ($uri === '/login') {
 	if ($method === 'GET') {
@@ -107,379 +131,10 @@ if ($uri === '/home' || $uri === '/' || $uri === '' || $uri === '/index.php') {
 	exit;
 }
 
-// Rotas web (sessão, CSRF)
-if (strpos($uri, '/users') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	if ($user['role_id'] != 99) {
-		http_response_code(403);
-		echo 'Acesso negado.';
-		exit;
-	}
-	// CRUD via modais na mesma rota
-	if ($uri === '/users' && $method === 'GET') {
-		// Serve apenas HTML para o frontend
-		$webUserController->index();
-		exit;
-	}
-	// As demais rotas web podem ser ajustadas para servir HTML ou redirecionar
-	// Se necessário, implemente formulários web ou redirecione para /users
-}
-
-// Rotas web para Produtos
-if (strpos($uri, '/products') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	// Lista pública para usuários autenticados
-	if ($uri === '/products' && $method === 'GET') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$webProductController->index();
-		exit;
-	}
-	// Ações de gerenciamento exigem admin
-	// if ($user['role_id'] != 99) {
-	// 	http_response_code(403);
-	// 	echo 'Acesso negado.';
-	// 	exit;
-	// }
-	if ($uri === '/products' && $method === 'POST') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiProductController->store();
-		exit;
-	}
-	if (preg_match('#^/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiProductController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiProductController->delete($m[1]);
-		exit;
-	}
-}
-
-// Rotas web para Movimentações de Estoque
-if (strpos($uri, '/stock-movements') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	if ($uri === '/stock-movements' && $method === 'GET') {
-		// allow admin and vendedor to view stock movements
-		Access::requireWebRole(['admin', 'vendedor']);
-		$webStockMovementsController->index();
-		exit;
-	}
-	// mutations via AJAX
-	if ($uri === '/stock-movements' && $method === 'POST') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiStockMovementsController->store();
-		exit;
-	}
-	if (preg_match('#^/stock-movements/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiStockMovementsController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/stock-movements/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiStockMovementsController->delete($m[1]);
-		exit;
-	}
-}
-
-// Rotas web para Categorias
-if (strpos($uri, '/categories') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	// Lista pública para usuários autenticados
-	if ($uri === '/categories' && $method === 'GET') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$webCategoryController->index();
-		exit;
-	}
-	// Ações de gerenciamento exigem admin
-	// if ($user['role_id'] != 99) {
-	// 	http_response_code(403);
-	// 	echo 'Acesso negado.';
-	// 	exit;
-	// }
-	if ($uri === '/categories' && $method === 'POST') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiCategoryController->store();
-		exit;
-	}
-	if (preg_match('#^/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiCategoryController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRole(['admin', 'vendedor']);
-		$apiCategoryController->delete($m[1]);
-		exit;
-	}
-}
-
-// Rotas web (sessão, CSRF)
-if (strpos($uri, '/users') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	if ($user['role_id'] != 99) {
-		http_response_code(403);
-		echo 'Acesso negado.';
-		exit;
-	}
-	// CRUD via modais na mesma rota
-	if ($uri === '/users' && $method === 'GET') {
-		// Serve apenas HTML para o frontend
-		$webUserController->index();
-		exit;
-	}
-	// As demais rotas web podem ser ajustadas para servir HTML ou redirecionar
-	// Se necessário, implemente formulários web ou redirecione para /users
-}
-
-// Rotas web para Produtos
-if (strpos($uri, '/products') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	// Lista pública para usuários autenticados
-	if ($uri === '/products' && $method === 'GET') {
-		$webProductController->index();
-		exit;
-	}
-	// Ações de gerenciamento exigem admin
-	if ($user['role_id'] != 99) {
-		http_response_code(403);
-		echo 'Acesso negado.';
-		exit;
-	}
-	if ($uri === '/products' && $method === 'POST') {
-		$apiProductController->store();
-		exit;
-	}
-	if (preg_match('#^/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		$apiProductController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		$apiProductController->delete($m[1]);
-		exit;
-	}
-}
-
-// Rotas web para Categorias
-if (strpos($uri, '/categories') === 0) {
-	$user = AuthMiddleware::check();
-	if (!$user) {
-		header('Location: /login');
-		exit;
-	}
-	// Lista pública para usuários autenticados
-	if ($uri === '/categories' && $method === 'GET') {
-		$webCategoryController->index();
-		exit;
-	}
-	// Ações de gerenciamento exigem admin
-	if ($user['role_id'] != 99) {
-		http_response_code(403);
-		echo 'Acesso negado.';
-		exit;
-	}
-	if ($uri === '/categories' && $method === 'POST') {
-		$apiCategoryController->store();
-		exit;
-	}
-	if (preg_match('#^/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		$apiCategoryController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		$apiCategoryController->delete($m[1]);
-		exit;
-	}
-}
-
-// Rotas API (JSON)
-if (strpos($uri, '/api/') === 0) {
-	$user = ApiAuthMiddleware::check();
-	if (!$user) {
-		http_response_code(401);
-		header('Content-Type: application/json');
-		echo json_encode(['error' => 'Token invalido ou ausente']);
-		exit;
-	}
-	// Flags para checagens rápidas no bloco de API
-	$isAdmin = ApiAuthMiddleware::checkRole(['admin']);
-	// Permissão: apenas admin pode acessar /api/users
-	if ($uri === '/api/users' && $method === 'GET') {
-		if (!$isAdmin) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
-		$apiUserController->index();
-		exit;
-	}
-	if ($uri === '/api/users/create' && $method === 'POST') {
-		if (!$isAdmin) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
-		$apiUserController->store();
-		exit;
-	}
-	if (preg_match('#^/api/users/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
-		if (!$isAdmin) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
-		$apiUserController->edit($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/users/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		if (!$isAdmin) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
-		$apiUserController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/users/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		if (!$isAdmin) {
-			http_response_code(403);
-			header('Content-Type: application/json');
-			echo json_encode(['error' => 'Acesso negado']);
-			exit;
-		}
-		$apiUserController->delete($m[1]);
-		exit;
-	}
-	
-	
-	// API Movimentações de Estoque
-	if ($uri === '/api/stock-movements' && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiStockMovementsController->index();
-		exit;
-	}
-	if (preg_match('#^/api/stock-movements/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiStockMovementsController->edit($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/stock-movements/show/(\d+)$#', $uri, $m) && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiStockMovementsController->show($m[1]);
-		exit;
-	}
-	if ($uri === '/api/stock-movements/create' && $method === 'POST') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiStockMovementsController->store();
-		exit;
-	}
-	if (preg_match('#^/api/stock-movements/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiStockMovementsController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/stock-movements/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiStockMovementsController->delete($m[1]);
-		exit;
-	}
-	
-	
-	// API Produtos
-	if ($uri === '/api/products' && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiProductController->index();
-		exit;
-	}
-	
-	if (preg_match('#^/api/products/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiProductController->edit($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/products/show/(\d+)$#', $uri, $m) && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiProductController->show($m[1]);
-		exit;
-	}
-	if ($uri === '/api/products/create' && $method === 'POST') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiProductController->store();
-		exit;
-	}
-	if (preg_match('#^/api/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiProductController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiProductController->delete($m[1]);
-		exit;
-	}
-
-	// API Categorias
-	if ($uri === '/api/categories' && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiCategoryController->index();
-		exit;
-	}
-	if (preg_match('#^/api/categories/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiCategoryController->edit($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/categories/show/(\d+)$#', $uri, $m) && $method === 'GET') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiCategoryController->show($m[1]);
-		exit;
-	}
-	if ($uri === '/api/categories/create' && $method === 'POST') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiCategoryController->store();
-		exit;
-	}
-	if (preg_match('#^/api/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiCategoryController->update($m[1]);
-		exit;
-	}
-	if (preg_match('#^/api/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
-		$apiCategoryController->delete($m[1]);
-		exit;
-	}
-}
+// Resource routes are handled via `src/Routes/bootstrap.php` and per-resource
+// route files under `src/Routes/*`. These provide Web and API routes for
+// Products, Users, Categories and Stock Movements. If a route is matched by
+// the router it has already been dispatched above.
 
 // fallback 404
 http_response_code(404);
