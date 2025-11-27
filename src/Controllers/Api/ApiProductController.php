@@ -35,7 +35,6 @@ class ApiProductController
 
     public function edit($id)
     {
-        $isJson = strpos($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json') !== false;
         header('Content-Type: application/json; charset=utf-8');
         $product = $this->model->findById($id);
         if (!$product) {

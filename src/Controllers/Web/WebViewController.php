@@ -41,6 +41,7 @@ class WebViewController
         if ($isAdmin || $isVendedor) {
             $links[] = '<li><a href="/products">Produtos</a></li>';
             $links[] = '<li><a href="/categories">Categorias</a></li>';
+            $links[] = '<li><a href="/stock-movements">Movimentações de Estoque</a></li>';
         }
 
         // Always provide logout link

@@ -36,14 +36,17 @@ class Product
 
     public function findById($id)
     {
-        $stmt = $this->pdo->prepare('
-            SELECT p.*, c.name AS category_name
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            WHERE p.id = :id LIMIT 1
-        ');
+        $stmt = $this->pdo->prepare('SELECT * FROM products WHERE id = :id LIMIT 1');
         $stmt->execute([':id' => $id]);
-        return $stmt->fetch() ?: null;
+        
+        $product = $stmt->fetch();
+
+        if ($product) {
+            $product['category'] = $this->getCategory($product);
+            return $product;
+        }
+
+        return null;
     }
 
     public function create(array $data)

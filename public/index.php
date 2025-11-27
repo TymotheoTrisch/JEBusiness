@@ -51,10 +51,12 @@ use Controllers\Api\ApiAuthController;
 use Controllers\Api\ApiUserController;
 use Controllers\Api\ApiProductController;
 use Controllers\Api\ApiCategoryController;
+use Controllers\Api\ApiStockMovementsController;
 use Controllers\Web\WebUserController;
 use Controllers\Web\WebViewController;
 use Controllers\Web\WebProductController;
 use Controllers\Web\WebCategoryController;
+use Controllers\Web\WebStockMovementsController;
 use Middlewares\AuthMiddleware;
 use Middlewares\ApiAuthMiddleware;
 use Helpers\Access;
@@ -63,10 +65,12 @@ $auth = new ApiAuthController();
 $apiUserController = new ApiUserController();
 $apiProductController = new ApiProductController();
 $apiCategoryController = new ApiCategoryController();
+$apiStockMovementsController = new ApiStockMovementsController();
 $webUserController = new WebUserController();
 $views = new WebViewController();
 $webProductController = new WebProductController();
 $webCategoryController = new WebCategoryController();
+$webStockMovementsController = new WebStockMovementsController();
 
 // NOTE: session-based access checks are handled by Helpers\Access
 
@@ -141,18 +145,49 @@ if (strpos($uri, '/products') === 0) {
 	// 	exit;
 	// }
 	if ($uri === '/products' && $method === 'POST') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
+		Access::requireWebRole(['admin', 'vendedor']);
 		$apiProductController->store();
 		exit;
 	}
 	if (preg_match('#^/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
+		Access::requireWebRole(['admin', 'vendedor']);
 		$apiProductController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
+		Access::requireWebRole(['admin', 'vendedor']);
 		$apiProductController->delete($m[1]);
+		exit;
+	}
+}
+
+// Rotas web para Movimentações de Estoque
+if (strpos($uri, '/stock-movements') === 0) {
+	$user = AuthMiddleware::check();
+	if (!$user) {
+		header('Location: /login');
+		exit;
+	}
+	if ($uri === '/stock-movements' && $method === 'GET') {
+		// allow admin and vendedor to view stock movements
+		Access::requireWebRole(['admin', 'vendedor']);
+		$webStockMovementsController->index();
+		exit;
+	}
+	// mutations via AJAX
+	if ($uri === '/stock-movements' && $method === 'POST') {
+		Access::requireWebRole(['admin', 'vendedor']);
+		$apiStockMovementsController->store();
+		exit;
+	}
+	if (preg_match('#^/stock-movements/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
+		Access::requireWebRole(['admin', 'vendedor']);
+		$apiStockMovementsController->update($m[1]);
+		exit;
+	}
+	if (preg_match('#^/stock-movements/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+		Access::requireWebRole(['admin', 'vendedor']);
+		$apiStockMovementsController->delete($m[1]);
 		exit;
 	}
 }
@@ -177,17 +212,17 @@ if (strpos($uri, '/categories') === 0) {
 	// 	exit;
 	// }
 	if ($uri === '/categories' && $method === 'POST') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
+		Access::requireWebRole(['admin', 'vendedor']);
 		$apiCategoryController->store();
 		exit;
 	}
 	if (preg_match('#^/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
+		Access::requireWebRole(['admin', 'vendedor']);
 		$apiCategoryController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
-		Access::requireWebRoleJson(['admin', 'vendedor']);
+		Access::requireWebRole(['admin', 'vendedor']);
 		$apiCategoryController->delete($m[1]);
 		exit;
 	}
@@ -204,7 +239,6 @@ if (strpos($uri, '/api/') === 0) {
 	}
 	// Flags para checagens rápidas no bloco de API
 	$isAdmin = ApiAuthMiddleware::checkRole(['admin']);
-	$isVendedor = ApiAuthMiddleware::checkRole(['vendedor']);
 	// Permissão: apenas admin pode acessar /api/users
 	if ($uri === '/api/users' && $method === 'GET') {
 		if (!$isAdmin) {
@@ -256,55 +290,102 @@ if (strpos($uri, '/api/') === 0) {
 		$apiUserController->delete($m[1]);
 		exit;
 	}
-
+	
+	
+	// API Movimentações de Estoque
+	if ($uri === '/api/stock-movements' && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
+		$apiStockMovementsController->index();
+		exit;
+	}
+	if (preg_match('#^/api/stock-movements/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
+		$apiStockMovementsController->edit($m[1]);
+		exit;
+	}
+	if (preg_match('#^/api/stock-movements/show/(\d+)$#', $uri, $m) && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
+		$apiStockMovementsController->show($m[1]);
+		exit;
+	}
+	if ($uri === '/api/stock-movements/create' && $method === 'POST') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
+		$apiStockMovementsController->store();
+		exit;
+	}
+	if (preg_match('#^/api/stock-movements/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
+		$apiStockMovementsController->update($m[1]);
+		exit;
+	}
+	if (preg_match('#^/api/stock-movements/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
+		$apiStockMovementsController->delete($m[1]);
+		exit;
+	}
+	
+	
 	// API Produtos
 	if ($uri === '/api/products' && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->index();
 		exit;
 	}
+	
 	if (preg_match('#^/api/products/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->edit($m[1]);
 		exit;
 	}
 	if (preg_match('#^/api/products/show/(\d+)$#', $uri, $m) && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->show($m[1]);
 		exit;
 	}
 	if ($uri === '/api/products/create' && $method === 'POST') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->store();
 		exit;
 	}
 	if (preg_match('#^/api/products/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/api/products/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiProductController->delete($m[1]);
 		exit;
 	}
 
 	// API Categorias
 	if ($uri === '/api/categories' && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->index();
 		exit;
 	}
 	if (preg_match('#^/api/categories/edit/(\d+)$#', $uri, $m) && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->edit($m[1]);
 		exit;
 	}
 	if (preg_match('#^/api/categories/show/(\d+)$#', $uri, $m) && $method === 'GET') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->show($m[1]);
 		exit;
 	}
 	if ($uri === '/api/categories/create' && $method === 'POST') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->store();
 		exit;
 	}
 	if (preg_match('#^/api/categories/update/(\d+)$#', $uri, $m) && $method === 'PUT') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->update($m[1]);
 		exit;
 	}
 	if (preg_match('#^/api/categories/delete/(\d+)$#', $uri, $m) && $method === 'DELETE') {
+		Access::requireWebRoleJson(['admin', 'vendedor']);
 		$apiCategoryController->delete($m[1]);
 		exit;
 	}
