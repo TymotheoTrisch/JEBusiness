@@ -4,7 +4,7 @@ $sql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS `products` (
     `id` INT NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
-    `description` TEXT NULL,
+    `description` VARCHAR(255) NULL,
     `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `stock_qty` INT NOT NULL DEFAULT 0,
     `category_id` INT NULL,

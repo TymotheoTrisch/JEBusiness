@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Categorias</title>
+  {{csrf_meta}}
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { color: #333; }
+    .toolbar { margin-bottom: 20px; }
+    .btn { padding: 8px 15px; margin-right: 10px; cursor: pointer; border: none; border-radius: 4px; background: #007bff; color: white; font-size: 14px; }
+    .btn:hover { background: #0056b3; }
+    .btn-danger { background: #dc3545; }
+    .btn-danger:hover { background: #c82333; }
+    .btn-success { background: #28a745; }
+    .btn-success:hover { background: #218838; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #f2f2f2; font-weight: bold; }
+    tr:hover { background-color: #f9f9f9; }
+    .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); }
+    .modal.active { display: block; }
+    .modal-content { background: #fff; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 600px; border-radius: 4px; }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close:hover { color: #000; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; }
+    input[type="text"], textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    textarea { min-height: 80px; resize: vertical; }
+    .form-actions { margin-top: 20px; text-align: right; }
+    .alert { padding: 12px; margin-bottom: 20px; border-radius: 4px; }
+    .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert-danger { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .loading { text-align: center; padding: 20px; }
+    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Gerenciar Categorias</h1>
+    <div id="alerts"></div>
+
+    <div class="toolbar">
+      <button class="btn btn-success" onclick="openCreateCategoryForm()">+ Nova Categoria</button>
+      <button class="btn" onclick="loadCategories()">Atualizar</button>
+      <a class="btn" href="/products">Voltar para Produtos</a>
+    </div>
+
+    <div id="categoriesTableContainer">
+      <div class="loading"><div class="spinner"></div><p>Carregando categorias...</p></div>
+    </div>
+  </div>
+
+  <!-- Modal / Form -->
+  <div id="categoryModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeCategoryModal()">&times;</span>
+      <h2 id="categoryModalTitle">Categorias</h2>
+      <div class="modal-alert" id="categoryModalAlert"></div>
+
+      <div id="categoryFormContainer" style="margin-top: 10px;">
+        <h3 id="categoryFormTitle">Nova Categoria</h3>
+        <form id="categoryForm">
+          <input type="hidden" id="categoryId">
+          <div class="form-group">
+            <label for="categoryName">Nome *</label>
+            <input type="text" id="categoryName" required>
+          </div>
+          <div class="form-group">
+            <label for="categoryDescription">Descrição</label>
+            <textarea id="categoryDescription"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn" onclick="closeCategoryForm()">Cancelar</button>
+            <button type="submit" class="btn btn-success">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiToken = localStorage.getItem('api_token') || '';
+    const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = metaCsrf ? metaCsrf.content : null;
+
+    let categories = [];
+    let editingCategoryId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCategories();
+      document.getElementById('categoryForm').addEventListener('submit', handleSaveCategory);
+    });
+
+    function loadCategories() {
+      const container = document.getElementById('categoriesTableContainer');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando categorias...</p></div>';
+      $.ajax({
+        url: '/api/categories', type: 'GET', dataType: 'json',
+        headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function(data){ categories = data.categories || []; renderCategoriesTable(); },
+        error: function(){ container.innerHTML = '<p>Erro ao carregar categorias.</p>'; }
+      });
+    }
+
+    function renderCategoriesTable(){
+      const container = document.getElementById('categoriesTableContainer');
+      const filtered = categories.filter(c => c.id !== 1);
+      if (filtered.length === 0) { container.innerHTML = '<p>Nenhuma categoria cadastrada.</p>'; return; }
+      let html = '<table><thead><tr><th>ID</th><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead><tbody>';
+      filtered.forEach(c=>{
+        html += `<tr><td>${c.id}</td><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.description||'-')}</td><td>`+
+                `<button class="btn" onclick="openEditCategoryForm(${c.id})">Editar</button> `+
+                `<button class="btn btn-danger" onclick="deleteCategory(${c.id})">Deletar</button>`+
+                `</td></tr>`;
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function openCreateCategoryForm(){ editingCategoryId = null; document.getElementById('categoryFormTitle').textContent='Nova Categoria'; document.getElementById('categoryForm').reset(); document.getElementById('categoryId').value=''; document.getElementById('categoryModal').classList.add('active'); }
+
+    function openEditCategoryForm(id){
+      editingCategoryId = id;
+      fetch('/api/categories/edit/'+id, { headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken } })
+      .then(r=>r.json()).then(data=>{
+        if (data.error) { showCategoryModalAlert('Erro: '+data.error,'danger'); return; }
+        const c = data.category;
+        document.getElementById('categoryFormTitle').textContent = `Editar Categoria: ${c.name}`;
+        document.getElementById('categoryId').value = c.id;
+        document.getElementById('categoryName').value = c.name;
+        document.getElementById('categoryDescription').value = c.description || '';
+        document.getElementById('categoryModal').classList.add('active');
+      }).catch(()=>showCategoryModalAlert('Erro ao buscar categoria','danger'));
+    }
+
+    function closeCategoryModal(){ document.getElementById('categoryModal').classList.remove('active'); }
+    function closeCategoryForm(){ document.getElementById('categoryForm').reset(); editingCategoryId = null; }
+
+    function handleSaveCategory(e){
+      e.preventDefault();
+      const id = document.getElementById('categoryId').value;
+      const data = { name: document.getElementById('categoryName').value, description: document.getElementById('categoryDescription').value };
+      if (!data.name) { showCategoryModalAlert('Nome da categoria é obrigatório','danger'); return; }
+      const url = id ? `/api/categories/update/${id}` : '/api/categories/create';
+      const method = id ? 'PUT' : 'POST';
+      $.ajax({ url: url, type: method, contentType: 'application/json', data: JSON.stringify(data), headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function(resp){ showCategoryModalAlert(id ? 'Categoria atualizada com sucesso!' : 'Categoria criada com sucesso!', 'success'); closeCategoryForm(); loadCategories(); },
+        error: function(xhr){ let msg = 'Erro ao salvar categoria'; try { const j = JSON.parse(xhr.responseText); if (j.error) msg = j.error; } catch{} showCategoryModalAlert(msg,'danger'); }
+      });
+    }
+
+    function deleteCategory(id){ if (!confirm('Tem certeza que deseja deletar esta categoria?')) return; $.ajax({ url: `/api/categories/delete/${id}`, type: 'DELETE', headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }, success: function(){ showCategoryModalAlert('Categoria deletada com sucesso!','success'); loadCategories(); }, error: function(xhr){ let msg='Erro ao deletar categoria'; try{ const j=JSON.parse(xhr.responseText); if (j.error) msg=j.error; }catch{} showCategoryModalAlert(msg,'danger'); } }); }
+
+    // Alerts
+    function showAlert(message, type='info'){ const container = document.getElementById('alerts'); const a = document.createElement('div'); a.className = `alert alert-${type}`; a.textContent = message; container.appendChild(a); setTimeout(()=>a.remove(),5000); }
+    function showCategoryModalAlert(message, type='info'){ const c = document.getElementById('categoryModalAlert'); if(!c) return; c.innerHTML = `<div class="alert alert-${type}">${message}</div>`; setTimeout(()=>c.innerHTML='',5000); }
+
+    function escapeHtml(text){ if (!text) return ''; const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return String(text).replace(/[&<>"']/g,m=>map[m]); }
+
+    window.onclick = function(event){ const modal = document.getElementById('categoryModal'); if (event.target === modal) closeCategoryModal(); }
+  </script>
+</body>
+</html>
