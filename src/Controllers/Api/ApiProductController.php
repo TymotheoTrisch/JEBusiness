@@ -124,6 +124,22 @@ class ApiProductController
         }
 
         $product = $this->model->create($data);
+        
+        // Se foi criado com estoque, criar movimentação inicial automática
+        if (isset($data['stock_qty']) && (int)$data['stock_qty'] > 0) {
+            $stockMovementModel = new \Models\Stock_movement();
+            $current = \Middlewares\ApiAuthMiddleware::check();
+            $userId = $current ? $current['id'] : null;
+            
+            $stockMovementModel->create([
+                'product_id' => $product['id'],
+                'qty' => (int)$data['stock_qty'],
+                'type' => 'initial',
+                'reason' => 'Saldo inicial do produto ' + $product["name"],
+                'user_id' => $userId
+            ]);
+        }
+
         if ($isJson) {
             header('Content-Type: application/json; charset=utf-8');
             http_response_code(201);

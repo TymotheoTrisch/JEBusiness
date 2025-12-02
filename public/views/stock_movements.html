@@ -1,37 +1,204 @@
 <!doctype html>
 <html lang="pt-br">
+
 <head>
   <meta charset="utf-8">
   <title>Movimentações de Estoque</title>
   {{csrf_meta}}
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    .toolbar { margin-bottom: 20px; }
-    .btn { padding: 8px 15px; margin-right: 10px; cursor: pointer; border: none; border-radius: 4px; background: #007bff; color: white; }
-    .btn-success { background: #28a745; }
-    .btn-danger { background: #dc3545; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #f2f2f2; }
-    .modal { display: none; position: fixed; left:0; top:0; width:100%; height:100%; background: rgba(0,0,0,0.4); }
-    .modal.active{ display:block; }
-    .modal-content { background:#fff; margin:5% auto; padding:20px; width:600px; border-radius:4px; }
-    
-    .form-group { margin-bottom: 15px;}
-    input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    textarea { resize: vertical; height: 80px; }
-    
-    
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .toolbar {
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 8px 15px;
+      margin-right: 10px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+    }
+
+    .btn-success {
+      background: #28a745;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+
+    th {
+      background: #f2f2f2;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .modal.active {
+      display: block;
+    }
+
+    .modal-content {
+      background: #fff;
+      margin: 5% auto;
+      padding: 20px;
+      width: 600px;
+      border-radius: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    textarea {
+      resize: vertical;
+      height: 80px;
+    }
+
+
     /* Product select + info */
-    .product-select { width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:14px; }
-    .product-info { margin-top:8px; padding:10px; border-radius:4px; background:#f9f9fb; border:1px solid #eef0f5; display:flex; gap:10px; align-items:center; }
-    .product-info .title { font-weight:700; color:#222; }
-    .product-info .meta { color:#666; font-size:13px; }
+    .product-select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .product-info {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 4px;
+      background: #f9f9fb;
+      border: 1px solid #eef0f5;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .product-info .title {
+      font-weight: 700;
+      color: #222;
+    }
+
+    .product-info .meta {
+      color: #666;
+      font-size: 13px;
+    }
+
+    /* Alerts - Melhorados */
+    .alert {
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      animation: slideIn 0.3s ease-in-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .alert-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert-danger {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .alert-info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    /* Tags para Tipo de Movimentação */
+    .movement-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-in {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .tag-out {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .tag-initial {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>Movimentações de Estoque</h1>
@@ -73,6 +240,7 @@
           <select id="movementType">
             <option value="in">Entrada</option>
             <option value="out">Saída</option>
+            <option value="initial" style="display:none;">Saldo Inicial</option>
           </select>
         </div>
         <div class="form-group">
@@ -95,22 +263,24 @@
     let movements = [];
     let products = [];
 
-    document.addEventListener('DOMContentLoaded', ()=>{
+    document.addEventListener('DOMContentLoaded', () => {
       loadProducts();
       loadMovements();
       document.getElementById('movementForm').addEventListener('submit', handleSave);
     });
 
-    function loadProducts(){
-      $.ajax({ url: '/api/products', type: 'GET', dataType: 'json', headers: { 'Authorization':'Bearer '+apiToken, 'Accept':'application/json','X-CSRF-Token':csrfToken },
-        success:function(d){ products = d.products || []; populateProductSelect(); },
-        error:function(){ /* ignore */ }
+    function loadProducts() {
+      $.ajax({
+        url: '/api/products', type: 'GET', dataType: 'json', 
+        headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function (d) { products = d.products || []; populateProductSelect(); },
+        error: function () { /* ignore */ }
       });
     }
 
-    function populateProductSelect(){
+    function populateProductSelect() {
       const sel = document.getElementById('movementProduct'); sel.innerHTML = '';
-      products.forEach(p=>{
+      products.forEach(p => {
         const o = document.createElement('option');
         o.value = p.id;
         o.textContent = p.name;
@@ -124,14 +294,24 @@
       updateProductInfo();
     }
 
-    function updateProductInfo(){
+    function updateProductInfo() {
       const sel = document.getElementById('movementProduct');
       const info = document.getElementById('productInfo');
       const nameEl = document.getElementById('productInfoName');
       const idEl = document.getElementById('productInfoId');
-      if (!sel || sel.options.length === 0) { info.style.display = 'none'; return; }
+
+      if (!sel || sel.options.length === 0) { 
+        info.style.display = 'none'; 
+        return; 
+      }
+
       const opt = sel.options[sel.selectedIndex];
-      if (!opt) { info.style.display = 'none'; return; }
+
+      if (!opt) { 
+        info.style.display = 'none'; 
+        return; 
+      }
+
       const name = opt.dataset.name || opt.textContent || '';
       const id = opt.value || '';
       nameEl.textContent = name;
@@ -139,74 +319,156 @@
       info.style.display = 'flex';
     }
 
-    function loadMovements(){
-      const container = document.getElementById('movementsContainer'); container.innerHTML = '<div class="loading">Carregando movimentações...</div>';
-      $.ajax({ url: '/api/stock-movements', type: 'GET', dataType: 'json', headers: { 'Authorization':'Bearer '+apiToken, 'Accept':'application/json','X-CSRF-Token':csrfToken },
-        success:function(d){ movements = d.stock_movements || []; renderTable(); },
-        error:function(xhr){ container.innerHTML = '<p>Erro ao carregar movimentações.</p>'; }
+    function loadMovements() {
+      const container = document.getElementById('movementsContainer'); 
+      container.innerHTML = '<div class="loading">Carregando movimentações...</div>';
+      $.ajax({
+        url: '/api/stock-movements', type: 'GET', dataType: 'json', headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function (d) { movements = d.stock_movements || []; renderTable(); },
+        error: function (xhr) { container.innerHTML = '<p>Erro ao carregar movimentações.</p>'; }
       });
     }
 
-    function renderTable(){
+    function renderTable() {
       const container = document.getElementById('movementsContainer');
-      if (movements.length === 0){ container.innerHTML = '<p>Nenhuma movimentação registrada.</p>'; return; }
+      if (movements.length === 0) { container.innerHTML = '<p>Nenhuma movimentação registrada.</p>'; return; }
       let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Qtd</th><th>Tipo</th><th>Motivo</th><th>Usuário</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
-      movements.forEach(m=>{
+      movements.forEach(m => {
         const prodLabel = resolveProductLabel(m.product_id);
-        const typeLabel = m.type === 'in' ? 'Entrada' : (m.type === 'out' ? 'Saída' : m.type);
-        html += `<tr><td>${m.id}</td><td>${escapeHtml(prodLabel)}</td><td>${m.qty}</td><td>${typeLabel}</td><td>${escapeHtml(m.reason||'-')}</td><td>${m.user_id||'-'}</td><td>${m.created_at||''}</td><td>`+
-                `<button class="btn" onclick="openEdit(${m.id})">Editar</button> <button class="btn btn-danger" onclick="deleteMovement(${m.id})">Deletar</button>`+
-                `</td></tr>`;
+        const tagClass = m.type === 'in' ? 'tag-in' : (m.type === 'out' ? 'tag-out' : 'tag-initial');
+        const typeLabel = m.type === 'in' ? 'Entrada' : (m.type === 'out' ? 'Saída' : (m.type === 'initial' ? 'Saldo Inicial' : m.type));
+        const typeTag = `<span class="movement-tag ${tagClass}">${typeLabel}</span>`;
+        html += `<tr><td>${m.id}</td><td>${escapeHtml(prodLabel)}</td><td>${m.qty}</td><td>${typeTag}</td><td>${escapeHtml(m.reason || '-')}</td><td>${m.user_id || '-'}</td><td>${m.created_at || ''}</td><td>` +
+          `<button class="btn" onclick="openEdit(${m.id})">Editar</button> <button class="btn btn-danger" onclick="deleteMovement(${m.id})">Deletar</button>` +
+          `</td></tr>`;
       });
       html += '</tbody></table>';
       container.innerHTML = html;
     }
 
-    function resolveProductLabel(productId){
+    function resolveProductLabel(productId) {
       if (!products || products.length === 0) return `#${productId}`;
       const p = products.find(x => String(x.id) === String(productId));
       if (!p) return `#${productId}`;
       return `${p.name}`;
     }
 
-    function openCreateModal(){ document.getElementById('movementForm').reset(); document.getElementById('movementId').value=''; document.getElementById('modalTitle').textContent='Nova Movimentação'; document.getElementById('movementModal').classList.add('active'); }
-    function closeModal(){ document.getElementById('movementModal').classList.remove('active'); }
-
-    function openEdit(id){
-      fetch('/api/stock-movements/edit/'+id, { headers:{ 'Authorization':'Bearer '+apiToken, 'Accept':'application/json','X-CSRF-Token':csrfToken }})
-      .then(r=>r.json()).then(data=>{
-        if (data.error) { showAlert('Erro: '+data.error,'danger'); return; }
-        const m = data.stock_movement;
-        document.getElementById('movementId').value = m.id;
-        document.getElementById('movementProduct').value = m.product_id;
-        document.getElementById('movementQty').value = m.qty;
-        document.getElementById('movementType').value = m.type;
-        document.getElementById('movementReason').value = m.reason || '';
-        document.getElementById('modalTitle').textContent = 'Editar Movimentação';
-        // ensure product info updates
-        updateProductInfo();
-        document.getElementById('movementModal').classList.add('active');
-      }).catch(()=>showAlert('Erro ao buscar movimentação','danger'));
+    function openCreateModal() { 
+      document.getElementById('movementForm').reset(); 
+      document.getElementById('movementId').value = ''; 
+      document.getElementById('modalTitle').textContent = 'Nova Movimentação'; 
+      document.getElementById('movementModal').classList.add('active'); 
+    }
+    function closeModal() { 
+      document.getElementById('movementModal').classList.remove('active'); 
     }
 
-    function handleSave(e){
+    function openEdit(id) {
+      fetch('/api/stock-movements/edit/' + id, { headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken } })
+        .then(r => r.json()).then(data => {
+          if (data.error) { showAlert('Erro: ' + data.error, 'danger'); return; }
+          const m = data.stock_movement;
+          document.getElementById('movementId').value = m.id;
+          document.getElementById('movementProduct').value = m.product_id;
+          document.getElementById('movementQty').value = m.qty;
+          document.getElementById('movementType').value = m.type;
+          document.getElementById('movementReason').value = m.reason || '';
+          document.getElementById('modalTitle').textContent = 'Editar Movimentação';
+          // ensure product info updates
+          updateProductInfo();
+          document.getElementById('movementModal').classList.add('active');
+        }).catch(() => showAlert('Erro ao buscar movimentação', 'danger'));
+    }
+
+    function handleSave(e) {
       e.preventDefault();
       const id = document.getElementById('movementId').value;
-      const data = { product_id: parseInt(document.getElementById('movementProduct').value), qty: parseInt(document.getElementById('movementQty').value), type: document.getElementById('movementType').value, reason: document.getElementById('movementReason').value };
+      const productId = parseInt(document.getElementById('movementProduct').value);
+      const qty = parseInt(document.getElementById('movementQty').value);
+      const type = document.getElementById('movementType').value;
+      const reason = document.getElementById('movementReason').value;
+
+      // Validações básicas no cliente
+      if (!productId || isNaN(productId)) {
+        showAlert('Selecione um produto válido', 'danger');
+        return;
+      }
+
+      if (!qty || isNaN(qty) || qty <= 0) {
+        showAlert('Quantidade deve ser um valor positivo', 'danger');
+        return;
+      }
+
+      if (!type) {
+        showAlert('Selecione um tipo de movimentação', 'danger');
+        return;
+      }
+
+      const data = { product_id: productId, qty: qty, type: type, reason: reason };
       const url = id ? `/api/stock-movements/update/${id}` : '/api/stock-movements/create';
       const method = id ? 'PUT' : 'POST';
-      $.ajax({ url: url, type: method, contentType: 'application/json', data: JSON.stringify(data), headers: { 'Authorization':'Bearer '+apiToken, 'Accept':'application/json','X-CSRF-Token':csrfToken },
-        success:function(){ showAlert('Movimentação salva com sucesso','success'); closeModal(); loadMovements(); },
-        error:function(xhr){ let msg='Erro ao salvar'; try{ const j=JSON.parse(xhr.responseText); if (j.error) msg=j.error; }catch{} showAlert(msg,'danger'); }
+      $.ajax({
+        url: url, type: method, contentType: 'application/json', data: JSON.stringify(data), headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function () { showAlert('Movimentação salva com sucesso', 'success'); closeModal(); loadMovements(); },
+        error: function (xhr) { 
+          let msg = 'Erro ao salvar'; 
+          try { 
+            const j = JSON.parse(xhr.responseText); 
+            if (j.error) msg = j.error; 
+          } catch { } 
+          showAlert(msg, 'danger'); 
+        }
       });
     }
 
-    function deleteMovement(id){ if (!confirm('Confirmar exclusão?')) return; $.ajax({ url:`/api/stock-movements/delete/${id}`, type:'DELETE', headers:{ 'Authorization':'Bearer '+apiToken, 'Accept':'application/json','X-CSRF-Token':csrfToken }, success:function(){ showAlert('Movimentação deletada','success'); loadMovements(); }, error:function(xhr){ let msg='Erro ao deletar'; try{ const j=JSON.parse(xhr.responseText); if (j.error) msg=j.error; }catch{} showAlert(msg,'danger'); } }); }
+    function deleteMovement(id) { 
+      if (!confirm('Confirmar exclusão?')) 
+        return; 
+    
+      $.ajax({ 
+        url: `/api/stock-movements/delete/${id}`, 
+        type: 'DELETE', 
+        headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }, 
+        success: function () { s
+          howAlert('Movimentação deletada', 'success'); 
+          loadMovements(); 
+        }, error: 
+        function (xhr) { 
+          let msg = 'Erro ao deletar'; 
+          try { 
+            const j = JSON.parse(xhr.responseText); 
+            if (j.error) msg = j.error; 
+          } catch {
+            
+          } showAlert(msg, 'danger'); } }); }
+          
 
-    function showAlert(msg,type='info'){ const c = document.getElementById('alerts'); const a = document.createElement('div'); a.className = `alert alert-${type}`; a.textContent = msg; c.appendChild(a); setTimeout(()=>a.remove(),5000); }
-    function escapeHtml(text){ if (!text) return ''; const map = {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}; return String(text).replace(/[&<>"']/g,m=>map[m]); }
+    function showAlert(message, type = 'info') {
+      const alertsContainer = document.getElementById('alerts');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      alertsContainer.appendChild(alert);
 
-    window.onclick = function(e){ const modal = document.getElementById('movementModal'); if (e.target === modal) closeModal(); }
+      setTimeout(() => {
+        alert.remove();
+      }, 5000);
+    }
+
+    function showModalAlert(modalId, message, type = 'danger') {
+      const alertContainer = document.getElementById(modalId);
+      if (!alertContainer) return;
+      alertContainer.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      setTimeout(() => {
+        alertContainer.innerHTML = '';
+      }, 5000);
+    }
+
+
+    function escapeHtml(text) { if (!text) return ''; const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }; return String(text).replace(/[&<>"']/g, m => map[m]); }
+
+    window.onclick = function (e) { const modal = document.getElementById('movementModal'); if (e.target === modal) closeModal(); }
   </script>
 </body>
+
 </html>
