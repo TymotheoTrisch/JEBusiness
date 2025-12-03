@@ -16,6 +16,11 @@ class ApiStockMovementsController
     {
         header('Content-Type: application/json; charset=utf-8');
         $movements = $this->model->getAll();
+
+        foreach ($movements as &$movement) {
+            $movement['formatted_date'] = $this->formatDate($movement['created_at']);
+        }
+
         echo json_encode(['stock_movements' => $movements]);
     }
 
@@ -30,7 +35,14 @@ class ApiStockMovementsController
             return;
         }
 
+        $movement['formatted_date'] = $this->formatDate($movement['created_at']);
+
         echo json_encode(['stock_movement' => $movement]);
+    }
+
+    public function formatDate($contentDate) {
+        $timestamp = strtotime($contentDate);
+        return date('d/m/Y H:i:s', $timestamp);
     }
     
     public function edit($id)

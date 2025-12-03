@@ -129,13 +129,14 @@ class ApiProductController
         if (isset($data['stock_qty']) && (int)$data['stock_qty'] > 0) {
             $stockMovementModel = new \Models\Stock_movement();
             $current = \Middlewares\ApiAuthMiddleware::check();
-            $userId = $current ? $current['id'] : null;
-            
+            // garantir um user_id válido para a inserção (se não houver usuário, usar 0)
+            $userId = $current ? $current['id'] : 0;
+
             $stockMovementModel->create([
                 'product_id' => $product['id'],
                 'qty' => (int)$data['stock_qty'],
-                'type' => 'initial',
-                'reason' => 'Saldo inicial do produto ' + $product["name"],
+                'type' => 'in',
+                'reason' => 'Saldo inicial do produto ' . ($product['name'] ?? ''),
                 'user_id' => $userId
             ]);
         }

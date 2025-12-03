@@ -144,6 +144,7 @@
         opacity: 0;
         transform: translateY(-10px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -189,12 +190,6 @@
       background-color: #f8d7da;
       color: #721c24;
       border: 1px solid #f5c6cb;
-    }
-
-    .tag-initial {
-      background-color: #d1ecf1;
-      color: #0c5460;
-      border: 1px solid #bee5eb;
     }
   </style>
 </head>
@@ -262,19 +257,46 @@
 
     let movements = [];
     let products = [];
+    let productsLoaded = false;
+    let movementsLoaded = false;
+
+    function maybeRender() {
+      const container = document.getElementById('movementsContainer');
+      // se ambos carregaram, renderiza a tabela
+      if (productsLoaded && movementsLoaded) {
+        renderTable();
+        return true;
+      }
+      // se um dos dois ainda não carregou, mantém o loading
+      container.innerHTML = '<div class="loading">Carregando movimentações e produtos...</div>';
+      return false;
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
-      loadProducts();
+      // inicia ambos requests em paralelo; render ocorrera somente quando ambos responderem
+      productsLoaded = false;
+      movementsLoaded = false;
+      // mostra loading enquanto não tivermos ambos
+      document.getElementById('movementsContainer').innerHTML = '<div class="loading">Carregando movimentações e produtos...</div>';
       loadMovements();
+      loadProducts();
       document.getElementById('movementForm').addEventListener('submit', handleSave);
     });
 
     function loadProducts() {
       $.ajax({
-        url: '/api/products', type: 'GET', dataType: 'json', 
+        url: '/api/products', type: 'GET', dataType: 'json',
         headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
-        success: function (d) { products = d.products || []; populateProductSelect(); },
-        error: function () { /* ignore */ }
+        success: function (d) {
+          products = d.products || [];
+          populateProductSelect();
+          productsLoaded = true;
+          maybeRender();
+        },
+        error: function () {
+          productsLoaded = false;
+          document.getElementById('movementsContainer').innerHTML = '<p>Erro ao carregar produtos.</p>';
+        }
       });
     }
 
@@ -300,16 +322,16 @@
       const nameEl = document.getElementById('productInfoName');
       const idEl = document.getElementById('productInfoId');
 
-      if (!sel || sel.options.length === 0) { 
-        info.style.display = 'none'; 
-        return; 
+      if (!sel || sel.options.length === 0) {
+        info.style.display = 'none';
+        return;
       }
 
       const opt = sel.options[sel.selectedIndex];
 
-      if (!opt) { 
-        info.style.display = 'none'; 
-        return; 
+      if (!opt) {
+        info.style.display = 'none';
+        return;
       }
 
       const name = opt.dataset.name || opt.textContent || '';
@@ -320,12 +342,12 @@
     }
 
     function loadMovements() {
-      const container = document.getElementById('movementsContainer'); 
+      const container = document.getElementById('movementsContainer');
       container.innerHTML = '<div class="loading">Carregando movimentações...</div>';
       $.ajax({
         url: '/api/stock-movements', type: 'GET', dataType: 'json', headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
-        success: function (d) { movements = d.stock_movements || []; renderTable(); },
-        error: function (xhr) { container.innerHTML = '<p>Erro ao carregar movimentações.</p>'; }
+        success: function (d) { movements = d.stock_movements || []; movementsLoaded = true; maybeRender(); },
+        error: function (xhr) { movementsLoaded = false; container.innerHTML = '<p>Erro ao carregar movimentações.</p>'; }
       });
     }
 
@@ -335,10 +357,11 @@
       let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Qtd</th><th>Tipo</th><th>Motivo</th><th>Usuário</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
       movements.forEach(m => {
         const prodLabel = resolveProductLabel(m.product_id);
-        const tagClass = m.type === 'in' ? 'tag-in' : (m.type === 'out' ? 'tag-out' : 'tag-initial');
-        const typeLabel = m.type === 'in' ? 'Entrada' : (m.type === 'out' ? 'Saída' : (m.type === 'initial' ? 'Saldo Inicial' : m.type));
+        // const created_at = formatDataHora(m.created_at);
+        const tagClass = m.type === 'in' ? 'tag-in' : 'tag-out';
+        const typeLabel = m.type === 'in' ? 'Entrada' : 'Saída';
         const typeTag = `<span class="movement-tag ${tagClass}">${typeLabel}</span>`;
-        html += `<tr><td>${m.id}</td><td>${escapeHtml(prodLabel)}</td><td>${m.qty}</td><td>${typeTag}</td><td>${escapeHtml(m.reason || '-')}</td><td>${m.user_id || '-'}</td><td>${m.created_at || ''}</td><td>` +
+        html += `<tr><td>${m.id}</td><td>${escapeHtml(prodLabel)}</td><td>${m.qty}</td><td>${typeTag}</td><td>${escapeHtml(m.reason || '-')}</td><td>${m.user_id || '-'}</td><td>${m.formatted_date || ''}</td><td>` +
           `<button class="btn" onclick="openEdit(${m.id})">Editar</button> <button class="btn btn-danger" onclick="deleteMovement(${m.id})">Deletar</button>` +
           `</td></tr>`;
       });
@@ -353,14 +376,31 @@
       return `${p.name}`;
     }
 
-    function openCreateModal() { 
-      document.getElementById('movementForm').reset(); 
-      document.getElementById('movementId').value = ''; 
-      document.getElementById('modalTitle').textContent = 'Nova Movimentação'; 
-      document.getElementById('movementModal').classList.add('active'); 
+    // substitui a função manual por uma versão simples usando toLocaleString
+    function formatDataHora(contentDate) {
+      if (!contentDate) return '';
+      const date = new Date(contentDate);
+      if (isNaN(date.getTime())) return contentDate; // fallback se inválida
+
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
     }
-    function closeModal() { 
-      document.getElementById('movementModal').classList.remove('active'); 
+
+    function openCreateModal() {
+      document.getElementById('movementForm').reset();
+      document.getElementById('movementId').value = '';
+      document.getElementById('modalTitle').textContent = 'Nova Movimentação';
+      document.getElementById('movementModal').classList.add('active');
+    }
+    function closeModal() {
+      document.getElementById('movementModal').classList.remove('active');
     }
 
     function openEdit(id) {
@@ -410,38 +450,42 @@
       $.ajax({
         url: url, type: method, contentType: 'application/json', data: JSON.stringify(data), headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
         success: function () { showAlert('Movimentação salva com sucesso', 'success'); closeModal(); loadMovements(); },
-        error: function (xhr) { 
-          let msg = 'Erro ao salvar'; 
-          try { 
-            const j = JSON.parse(xhr.responseText); 
-            if (j.error) msg = j.error; 
-          } catch { } 
-          showAlert(msg, 'danger'); 
+        error: function (xhr) {
+          let msg = 'Erro ao salvar';
+          try {
+            const j = JSON.parse(xhr.responseText);
+            if (j.error) msg = j.error;
+          } catch { }
+          showAlert(msg, 'danger');
         }
       });
     }
 
-    function deleteMovement(id) { 
-      if (!confirm('Confirmar exclusão?')) 
-        return; 
-    
-      $.ajax({ 
-        url: `/api/stock-movements/delete/${id}`, 
-        type: 'DELETE', 
-        headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }, 
-        success: function () { s
-          howAlert('Movimentação deletada', 'success'); 
-          loadMovements(); 
-        }, error: 
-        function (xhr) { 
-          let msg = 'Erro ao deletar'; 
-          try { 
-            const j = JSON.parse(xhr.responseText); 
-            if (j.error) msg = j.error; 
-          } catch {
-            
-          } showAlert(msg, 'danger'); } }); }
-          
+    function deleteMovement(id) {
+      if (!confirm('Confirmar exclusão?'))
+        return;
+
+      $.ajax({
+        url: `/api/stock-movements/delete/${id}`,
+        type: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function () {
+          s
+          howAlert('Movimentação deletada', 'success');
+          loadMovements();
+        }, error:
+          function (xhr) {
+            let msg = 'Erro ao deletar';
+            try {
+              const j = JSON.parse(xhr.responseText);
+              if (j.error) msg = j.error;
+            } catch {
+
+            } showAlert(msg, 'danger');
+          }
+      });
+    }
+
 
     function showAlert(message, type = 'info') {
       const alertsContainer = document.getElementById('alerts');

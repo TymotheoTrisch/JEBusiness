@@ -17,7 +17,10 @@ class Access
     {
         $name = self::sessionRoleName();
         if (!$name) return false;
-        return in_array($name, $roles, true);
+        // Comparação case-insensitive para evitar diferenças de capitalização
+        $nameLower = strtolower($name);
+        $rolesLower = array_map('strtolower', $roles);
+        return in_array($nameLower, $rolesLower, true);
     }
 
     // Para rotas web: se não autenticado, redireciona ao login; se não autorizado, mostra texto 403
