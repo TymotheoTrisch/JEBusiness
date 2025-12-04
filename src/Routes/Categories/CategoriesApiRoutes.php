@@ -2,7 +2,7 @@
 // API routes for Categories (uses $router and $apiCategoryController)
 
 $router->add('GET', '/api/categories', function () use ($apiCategoryController) {
-    \Helpers\Access::requireWebRoleJson(['admin', 'vendedor']);
+    // \Helpers\Access::requireWebRoleJson(['admin', 'vendedor']);
     $apiCategoryController->index();
 });
 
@@ -12,7 +12,7 @@ $router->add('GET', '#^/api/categories/edit/(\d+)$#', function ($id) use ($apiCa
 });
 
 $router->add('GET', '#^/api/categories/show/(\d+)$#', function ($id) use ($apiCategoryController) {
-    \Helpers\Access::requireWebRoleJson(['admin', 'vendedor']);
+    // \Helpers\Access::requireWebRoleJson(['admin', 'vendedor']);
     $apiCategoryController->show($id);
 });
 

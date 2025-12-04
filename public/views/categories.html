@@ -109,10 +109,9 @@
 
     function renderCategoriesTable(){
       const container = document.getElementById('categoriesTableContainer');
-      const filtered = categories.filter(c => c.id !== 1);
-      if (filtered.length === 0) { container.innerHTML = '<p>Nenhuma categoria cadastrada.</p>'; return; }
+      if (categories.length === 0) { container.innerHTML = '<p>Nenhuma categoria cadastrada.</p>'; return; }
       let html = '<table><thead><tr><th>ID</th><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead><tbody>';
-      filtered.forEach(c=>{
+      categories.forEach(c=>{
         html += `<tr><td>${c.id}</td><td>${escapeHtml(c.name)}</td><td>${escapeHtml(c.description||'-')}</td><td>`+
                 `<button class="btn" onclick="openEditCategoryForm(${c.id})">Editar</button> `+
                 `<button class="btn btn-danger" onclick="deleteCategory(${c.id})">Deletar</button>`+

@@ -525,9 +525,7 @@
         function renderCategoriesTable() {
             const container = document.getElementById('categoriesTableContainer');
 
-            const filteredCategories = categories.filter(c => c.id !== 1);
-
-            if (filteredCategories.length === 0) {
+            if (categories.length === 0) {
                 container.innerHTML = '<p>Nenhuma categoria cadastrada.</p>';
                 return;
             }
@@ -545,7 +543,7 @@
                 <tbody>
             `;
 
-            filteredCategories.forEach(category => {
+            categories.forEach(category => {
                 html += `
                 <tr>
                 <td>${category.id}</td>
