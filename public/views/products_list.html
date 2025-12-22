@@ -189,6 +189,33 @@
             margin: 0 auto;
         }
 
+        /* Estilos para botões de filtro */
+        .filter-btn {
+            background: #f1f1f1;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 6px 10px;
+            margin-right: 6px;
+            font-size: 13px;
+        }
+        .filter-btn.active {
+            background: #007bff;
+            color: #fff;
+            border-color: #0069d9;
+        }
+
+        /* Separação visual entre ativos e desativos na listagem */
+        .section-title {
+            margin-top: 18px;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #444;
+        }
+        .disabled-row {
+            opacity: 0.7;
+            background: linear-gradient(90deg, #fff 0%, #f8f9fa 100%);
+        }
+
         @keyframes spin {
             0% {
                 transform: rotate(0deg);
@@ -208,9 +235,16 @@
         <div id="alerts"></div>
 
         <div class="toolbar">
-            <button class="btn btn-success" onclick="openCreateModal()">+ Novo Produto</button>
+            <a class="btn" href="/home">Voltar</a>
+            <button class="btn btn-success" onclick="openCreateProductModal()">+ Novo Produto</button>
             <button class="btn" onclick="openCategoriesModal()">📁 Gerenciar Categorias</button>
             <button class="btn" onclick="loadProducts()">Atualizar</button>
+            <div class="filter-group" style="display:inline-block; margin-left:18px; vertical-align: middle;">
+                <span style="margin-right:8px; font-weight:600; color:#333;">Filtrar:</span>
+                <button id="filterActiveBtn" class="btn filter-btn" onclick="setProductFilter('active')">Somente ativos</button>
+                <button id="filterInactiveBtn" class="btn filter-btn" onclick="setProductFilter('inactive')">Somente desativos</button>
+                <button id="filterAllBtn" class="btn filter-btn" onclick="setProductFilter('all')">Todos</button>
+            </div>
         </div>
 
         <div id="productsContainer">
@@ -255,6 +289,11 @@
                     <select id="productCategory">
                         <!-- <option value=""></option> -->
                     </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="productIsActive">Ativo</label>
+                    <input type="checkbox" id="productIsActive" checked>
                 </div>
 
                 <div class="form-actions">
@@ -330,18 +369,21 @@
         let categories = [];
         let editingProductId = null;
         let editingCategoryId = null;
+        // filtro: 'active' | 'inactive' | 'all' (default 'active')
+        let productFilter = 'active';
 
         // Inicializa ao carregar a página
         document.addEventListener('DOMContentLoaded', () => {
             loadProducts();
             loadCategories();
+            // aplica estado inicial do filtro
+            setProductFilter(productFilter, false);
             document.getElementById('productForm').addEventListener('submit', handleSaveProduct);
             document.getElementById('categoryForm').addEventListener('submit', handleSaveCategory);
         });
 
         // Carrega lista de produtos via AJAX (jQuery)
         function loadProducts() {
-            console.log('Carregando produtos via AJAX...');
             const container = document.getElementById('productsContainer');
             container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando produtos...</p></div>';
 
@@ -368,59 +410,78 @@
         // Renderiza tabela de produtos
         function renderProductsTable() {
             const container = document.getElementById('productsContainer');
+            
 
             if (products.length === 0) {
-                container.innerHTML = '<p>Nenhum produto cadastrado. <a href="javascript:openCreateModal()">Criar novo</a></p>';
+                container.innerHTML = '<p>Nenhum produto cadastrado. <a href="javascript:openCreateProductModal()">Criar novo</a></p>';
                 return;
             }
+            
+            // Agrupa produtos conforme status
+            const activeProducts = products.filter(p => p.is_active == 1);
+            const inactiveProducts = products.filter(p => p.is_active == 0);
 
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th>Descrição</th>
-                            <th>Preço</th>
-                            <th>Estoque</th>
-                            <th>Categoria</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
+            // função helper para renderizar uma lista em tabela
+            function renderList(list) {
+                if (!list || list.length === 0) return '<p>—</p>';
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Descrição</th>
+                                <th>Preço</th>
+                                <th>Estoque</th>
+                                <th>Categoria</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
 
-            products.forEach(product => {
-                const preço = parseFloat(product.price).toFixed(2);
-                if(product.category_id == null) {
-                    product.category = { name: '<Não Categorizado>' };
-                }
-                html += `
-                    <tr>
-                        <td>${product.id}</td>
-                        <td>${escapeHtml(product.name)}</td>
-                        <td>${escapeHtml(product.description)}</td>
-                        <td>R$ ${preço}</td>
-                        <td>${product.stock_qty}</td>
-                        <td>${escapeHtml(product.category.name) || '-'}</td>
-                        <td>
-                            <button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="openEditModal(${product.id})">Editar</button>
-                            <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteProduct(${product.id})">Deletar</button>
-                        </td>
-                    </tr>
-                `;
-            });
+                list.forEach(product => {
+                    const preço = (product.sale_price !== undefined && product.sale_price !== null) ? parseFloat(product.sale_price).toFixed(2) : '0.00';
+                    if (product.category_id == null) product.category = { name: '<Não Categorizado>' };
+                    const disabledClass = product.is_active == 0 ? 'disabled-row' : '';
+                    html += `
+                        <tr class="${disabledClass}">
+                            <td>${product.id}</td>
+                            <td>${escapeHtml(product.name)}</td>
+                            <td>${escapeHtml(product.description)}</td>
+                            <td>R$ ${preço}</td>
+                            <td>${product.stock_qty}</td>
+                            <td>${escapeHtml(product.category.name) || '-'}</td>
+                            <td>
+                                <button class="btn" style="padding: 5px 10px; font-size: 12px;" onclick="openEditProductModal(${product.id})">Editar</button>
+                                <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteProduct(${product.id})">Deletar</button>
+                            </td>
+                        </tr>`;
+                });
 
-            html += `
-                    </tbody>
-                </table>
-            `;
+                html += `</tbody></table>`;
+                return html;
+            }
+
+            // Monta HTML conforme filtro selecionado
+            let html = '';
+            if (productFilter === 'active') {
+                html += `<div class="section-title">Produtos Ativos (${activeProducts.length})</div>`;
+                html += renderList(activeProducts);
+            } else if (productFilter === 'inactive') {
+                html += `<div class="section-title">Produtos Desativos (${inactiveProducts.length})</div>`;
+                html += renderList(inactiveProducts);
+            } else {
+                html += `<div class="section-title">Produtos Ativos (${activeProducts.length})</div>`;
+                html += renderList(activeProducts);
+                html += `<div class="section-title">Produtos Desativos (${inactiveProducts.length})</div>`;
+                html += renderList(inactiveProducts);
+            }
 
             container.innerHTML = html;
         }
 
         // Abre modal para criar novo produto
-        function openCreateModal() {
+        function openCreateProductModal() {
             editingProductId = null;
             document.getElementById('modalTitle').textContent = 'Novo Produto';
             document.getElementById('productForm').reset();
@@ -428,8 +489,18 @@
             document.getElementById('productModal').classList.add('active');
         }
 
+        // Define filtro de produtos e atualiza UI dos botões
+        function setProductFilter(filter, reload = true) {
+            productFilter = filter;
+            // Atualiza classes visuais dos botões
+            document.getElementById('filterActiveBtn').classList.toggle('active', filter === 'active');
+            document.getElementById('filterInactiveBtn').classList.toggle('active', filter === 'inactive');
+            document.getElementById('filterAllBtn').classList.toggle('active', filter === 'all');
+            if (reload) renderProductsTable();
+        }
+
         // Abre modal para editar produto (busca via API similar a users.html)
-        function openEditModal(productId) {
+        function openEditProductModal(productId) {
             editingProductId = productId;
             const apiUrl = '/api/products/edit/' + productId;
             fetch(apiUrl, {
@@ -447,10 +518,11 @@
                 document.getElementById('modalTitle').textContent = `Editar Produto: ${product.name}`;
                 document.getElementById('productId').value = product.id;
                 document.getElementById('productName').value = product.name;
-                document.getElementById('productPrice').value = product.price;
+                document.getElementById('productPrice').value = product.sale_price;
                 document.getElementById('productStock').value = product.stock_qty || 0;
                 document.getElementById('productDescription').value = product.description || '';
                 document.getElementById('productCategory').value = product.category_id || '';
+                document.getElementById('productIsActive').checked = product.is_active == 1;
 
                 document.getElementById('productModal').classList.add('active');
             })
@@ -615,13 +687,14 @@
             const categoryValue = document.getElementById('productCategory').value;
             const data = {
                 name: document.getElementById('productName').value,
-                price: parseFloat(document.getElementById('productPrice').value),
+                sale_price: parseFloat(document.getElementById('productPrice').value),
                 stock_qty: parseInt(document.getElementById('productStock').value) || 0,
                 description: document.getElementById('productDescription').value,
-                category_id: categoryValue ? parseInt(categoryValue) : null
+                category_id: categoryValue ? parseInt(categoryValue) : null,
+                is_active: document.getElementById('productIsActive').checked ? 1 : 0
             };
 
-            if (!data.name || !data.price) {
+            if (!data.name || !data.sale_price) {
                 showModalAlert('productModalAlert', 'Nome e preço são obrigatórios', 'danger');
                 return;
             }

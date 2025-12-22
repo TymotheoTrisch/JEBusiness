@@ -1,11 +1,11 @@
 <?php
-// Migration MySQL: cria tabela 'users'
+// Migration MySQL: cria tabela 'products'
 $sql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS `products` (
     `id` INT NOT NULL AUTO_INCREMENT,
     `name` VARCHAR(255) NOT NULL,
-    `description` VARCHAR(255) NULL,
-    `price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    `description` TEXT NULL,
+    `sale_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `stock_qty` INT NOT NULL DEFAULT 0,
     `category_id` INT NULL,
     `image_path` VARCHAR(255) NULL,

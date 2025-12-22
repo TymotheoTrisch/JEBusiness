@@ -27,27 +27,33 @@ class Stock_movement
     
     public function create(array $data)
     {
-        $stmt = $this->pdo->prepare("INSERT INTO stock_movements (product_id, qty, type, reason, user_id) VALUES (:product_id, :qty, :type, :reason, :user_id)");
-        $stmt->execute([
+        $stmt = $this->pdo->prepare("INSERT INTO stock_movements (product_id, quantity, movement_type, reason, created_by) VALUES (:product_id, :quantity, :movement_type, :reason, :created_by)");
+        $ok = $stmt->execute([
             ':product_id' => $data['product_id'],
-            ':qty' => $data['qty'],
-            ':type' => $data['type'],
+            ':quantity' => $data['quantity'],
+            ':movement_type' => $data['movement_type'],
             ':reason' => $data['reason'] ?? null,
-            ':user_id' => $data['user_id']
+            ':created_by' => $data['created_by'] ?? null
         ]);
+
+        if (!$ok) {
+            return false;
+        }
+
         return $this->pdo->lastInsertId();
     }
     
         
     public function update($id, array $data)
     {
-        $stmt = $this->pdo->prepare("UPDATE stock_movements SET product_id = :product_id, qty = :qty, type = :type, reason = :reason, user_id = :user_id WHERE id = :id");
+        $stmt = $this->pdo->prepare("UPDATE stock_movements SET product_id = :product_id, quantity = :quantity, movement_type = :movement_type, reason = :reason, updated_by = :updated_by, updated_at = :updated_at WHERE id = :id");
         return $stmt->execute([
             ':product_id' => $data['product_id'],
-            ':qty' => $data['qty'],
-            ':type' => $data['type'],
+            ':quantity' => $data['quantity'],
+            ':movement_type' => $data['movement_type'],
             ':reason' => $data['reason'] ?? null,
-            ':user_id' => $data['user_id'],
+            ':updated_by' => $data['updated_by'] ?? null,
+            ':updated_at' => $data['updated_at'] ?? null,
             ':id' => $id
         ]);
     }

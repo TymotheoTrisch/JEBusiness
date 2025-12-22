@@ -1,5 +1,5 @@
 <?php
-// Migration MySQL: cria tabela 'users'
+// Migration MySQL: cria tabela 'categories'
 $sql = <<<'SQL'
 CREATE TABLE IF NOT EXISTS `categories` (
   `id` INT NOT NULL AUTO_INCREMENT,

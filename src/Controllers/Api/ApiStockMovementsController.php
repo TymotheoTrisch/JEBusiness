@@ -18,7 +18,10 @@ class ApiStockMovementsController
         $movements = $this->model->getAll();
 
         foreach ($movements as &$movement) {
-            $movement['formatted_date'] = $this->formatDate($movement['created_at']);
+            $movement['formatted_created_at'] = $this->formatDate($movement['created_at']);
+            if(!empty($movement['updated_at'])) {
+                $movement['formatted_updated_at'] = $this->formatDate($movement['updated_at']);
+            }
         }
 
         echo json_encode(['stock_movements' => $movements]);
@@ -35,7 +38,8 @@ class ApiStockMovementsController
             return;
         }
 
-        $movement['formatted_date'] = $this->formatDate($movement['created_at']);
+        $movement['formatted_created_at'] = $this->formatDate($movement['created_at']);
+        $movement['formatted_updated_at'] = $this->formatDate($movement['updated_at']);
 
         echo json_encode(['stock_movement' => $movement]);
     }
@@ -64,13 +68,9 @@ class ApiStockMovementsController
 
         $data = $isJson ? json_decode(file_get_contents('php://input'), true) : $_POST;
         $data = $data ?: [];
-
-        // accept either 'quantity' or 'qty' from client, normalize to 'qty'
-        if (isset($data['quantity']) && !isset($data['qty'])) {
-            $data['qty'] = $data['quantity'];
-        }
-
-        if (empty($data['product_id']) || !isset($data['qty']) || !isset($data['type'])) {
+        
+        
+        if (empty($data['product_id']) || !isset($data['quantity']) || !isset($data['movement_type'])) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -82,7 +82,7 @@ class ApiStockMovementsController
         }
 
         // Validar se a quantidade é positiva
-        if (!is_numeric($data['qty']) || (int)$data['qty'] <= 0) {
+        if (!is_numeric($data['quantity']) || (int)$data['quantity'] <= 0) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -94,8 +94,8 @@ class ApiStockMovementsController
         }
 
         // Validar tipo de movimentação
-        $data['type'] = strtolower($data['type']);
-        if (!in_array($data['type'], ['in', 'out'])) {
+        $data['movement_type'] = strtolower($data['movement_type']);
+        if (!in_array($data['movement_type'], ['in', 'out'])) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -121,9 +121,9 @@ class ApiStockMovementsController
         }
 
         // Validar se não vai gerar saldo negativo para saídas
-        if ($data['type'] === 'out') {
+        if ($data['movement_type'] === 'out') {
             $currentStock = (int)($product['stock_qty'] ?? 0);
-            $movementQty = (int)$data['qty'];
+            $movementQty = (int)$data['quantity'];
             if ($currentStock < $movementQty) {
                 http_response_code(400);
                 if ($isJson) {
@@ -138,26 +138,26 @@ class ApiStockMovementsController
 
         // attach current API user id when available (do not rely on client)
         $current = \Middlewares\ApiAuthMiddleware::check();
-        if ($current && empty($data['user_id'])) {
-            $data['user_id'] = $current['id'];
+        if ($current && empty($data['created_by'])) {
+            $data['created_by'] = $current['id'];
         }
 
         // ensure types and qty numeric
-        $data['qty'] = (int)$data['qty'];
+        $data['quantity'] = (int)$data['quantity'];
 
         // Atualizar stock_qty do produto
         $newStock = (int)($product['stock_qty'] ?? 0);
-        if ($data['type'] === 'in') {
-            $newStock += $data['qty'];
-        } elseif ($data['type'] === 'out') {
-            $newStock -= $data['qty'];
+        if ($data['movement_type'] === 'in') {
+            $newStock += $data['quantity'];
+        } elseif ($data['movement_type'] === 'out') {
+            $newStock -= $data['quantity'];
         }
 
         // Atualizar stock_qty na tabela de produtos
         $productModel->update((int)$data['product_id'], [
             'name' => $product['name'],
             'description' => $product['description'] ?? null,
-            'price' => $product['price'],
+            'sale_price' => $product['sale_price'],
             'stock_qty' => $newStock,
             'category_id' => $product['category_id'] ?? null,
             'image_path' => $product['image_path'] ?? null,
@@ -178,12 +178,7 @@ class ApiStockMovementsController
         $data = $isJson ? json_decode(file_get_contents('php://input'), true) : $_POST;
         $data = $data ?: [];
 
-        // normalize quantity -> qty
-        if (isset($data['quantity']) && !isset($data['qty'])) {
-            $data['qty'] = $data['quantity'];
-        }
-
-        if (empty($data['product_id']) || !isset($data['qty']) || !isset($data['type'])) {
+        if (empty($data['product_id']) || !isset($data['quantity']) || !isset($data['movement_type'])) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -195,7 +190,7 @@ class ApiStockMovementsController
         }
 
         // Validar se a quantidade é positiva
-        if (!is_numeric($data['qty']) || (int)$data['qty'] <= 0) {
+        if (!is_numeric($data['quantity']) || (int)$data['quantity'] <= 0) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -207,8 +202,8 @@ class ApiStockMovementsController
         }
 
         // Validar tipo de movimentação
-        $data['type'] = strtolower($data['type']);
-        if (!in_array($data['type'], ['in', 'out'])) {
+        $data['movement_type'] = strtolower($data['movement_type']);
+        if (!in_array($data['movement_type'], ['in', 'out'])) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -248,18 +243,18 @@ class ApiStockMovementsController
 
         // Recalcular estoque: reverter movimento anterior e aplicar novo
         $currentStock = (int)($product['stock_qty'] ?? 0);
-        $oldQty = (int)($oldMovement['qty'] ?? 0);
-        $newQty = (int)$data['qty'];
+        $oldQty = (int)($oldMovement['quantity'] ?? 0);
+        $newQty = (int)$data['quantity'];
 
         // Reverter movimento antigo
-        if ($oldMovement['type'] === 'in') {
+        if ($oldMovement['movement_type'] === 'in') {
             $currentStock -= $oldQty;
-        } elseif ($oldMovement['type'] === 'out') {
+        } elseif ($oldMovement['movement_type'] === 'out') {
             $currentStock += $oldQty;
         }
 
         // Validar se não vai gerar saldo negativo para saídas
-        if ($data['type'] === 'out') {
+        if ($data['movement_type'] === 'out') {
             if ($currentStock < $newQty) {
                 http_response_code(400);
                 if ($isJson) {
@@ -273,25 +268,26 @@ class ApiStockMovementsController
         }
 
         // Aplicar novo movimento
-        if ($data['type'] === 'in') {
+        if ($data['movement_type'] === 'in') {
             $currentStock += $newQty;
-        } elseif ($data['type'] === 'out') {
+        } elseif ($data['movement_type'] === 'out') {
             $currentStock -= $newQty;
         }
 
         // attach current API user if missing
         $current = \Middlewares\ApiAuthMiddleware::check();
-        if ($current && empty($data['user_id'])) {
-            $data['user_id'] = $current['id'];
+        if ($current && empty($data['updated_by'])) {
+            $data['updated_by'] = $current['id'];
         }
 
-        $data['qty'] = (int)$data['qty'];
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        $data['quantity'] = (int)$data['quantity'];
 
         // Atualizar stock_qty na tabela de produtos
         $productModel->update((int)$data['product_id'], [
             'name' => $product['name'],
             'description' => $product['description'] ?? null,
-            'price' => $product['price'],
+            'sale_price' => $product['sale_price'],
             'stock_qty' => $currentStock,
             'category_id' => $product['category_id'] ?? null,
             'image_path' => $product['image_path'] ?? null,
@@ -337,12 +333,12 @@ class ApiStockMovementsController
         }
 
         $currentStock = (int)($product['stock_qty'] ?? 0);
-        $qty = (int)($movement['qty'] ?? 0);
+        $qty = (int)($movement['quantity'] ?? 0);
 
         // reverter efeito da movimentação
-        if ($movement['type'] === 'in') {
+        if ($movement['movement_type'] === 'in') {
             $newStock = $currentStock - $qty;
-        } elseif ($movement['type'] === 'out') {
+        } elseif ($movement['movement_type'] === 'out') {
             $newStock = $currentStock + $qty;
         } else {
             // tipos inesperados: apenas tente ajustar inversamente
@@ -360,7 +356,7 @@ class ApiStockMovementsController
         $productModel->update((int)$product['id'], [
             'name' => $product['name'],
             'description' => $product['description'] ?? null,
-            'price' => $product['price'],
+            'sale_price' => $product['sale_price'],
             'stock_qty' => $newStock,
             'category_id' => $product['category_id'] ?? null,
             'image_path' => $product['image_path'] ?? null,
