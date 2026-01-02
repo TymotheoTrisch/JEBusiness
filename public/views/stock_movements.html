@@ -17,7 +17,7 @@
     }
 
     .container {
-      max-width: 1100px;
+      max-width: 1300px;
       margin: 0 auto;
     }
 
@@ -172,24 +172,46 @@
     /* Tags para Tipo de Movimentação */
     .movement-tag {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
       font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 700;
+      text-transform: uppercase
     }
 
     .tag-in {
-      background-color: #d4edda;
-      color: #155724;
-      border: 1px solid #c3e6cb;
+      background: #e8f5ea;
+      color: #1b7a2a;
+      border: 1px solid #cfe9d0
     }
 
     .tag-out {
-      background-color: #f8d7da;
-      color: #721c24;
-      border: 1px solid #f5c6cb;
+      background: #fff0f0;
+      color: #8a1f2a;
+      border: 1px solid #f4c6c6
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px
+    }
+
+    .action-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px
+    }
+
+    .action-edit {
+      background: #17a2b8;
+      color: #fff
+    }
+
+    .action-delete {
+      background: #e46060;
+      color: #fff
     }
   </style>
 </head>
@@ -223,12 +245,13 @@
             <div>
               <div class="title" id="productInfoName"></div>
               <div class="meta" id="productInfoId"></div>
+              <div class="meta" id="productInfoCurrentStock"></div>
             </div>
           </div>
         </div>
         <div class="form-group">
           <label>Quantidade</label>
-          <input type="number" id="movementQty" min="1" value="1">
+          <input type="number" id="movementQuantity" min="1" value="1">
         </div>
         <div class="form-group">
           <label>Tipo</label>
@@ -257,13 +280,15 @@
 
     let movements = [];
     let products = [];
+    let users = [];
+    let usersLoaded = false;
     let productsLoaded = false;
     let movementsLoaded = false;
 
     function maybeRender() {
       const container = document.getElementById('movementsContainer');
       // se ambos carregaram, renderiza a tabela
-      if (productsLoaded && movementsLoaded) {
+      if (productsLoaded && movementsLoaded && usersLoaded) {
         renderTable();
         return true;
       }
@@ -276,10 +301,13 @@
       // inicia ambos requests em paralelo; render ocorrera somente quando ambos responderem
       productsLoaded = false;
       movementsLoaded = false;
+      usersLoaded = false;
       // mostra loading enquanto não tivermos ambos
-      document.getElementById('movementsContainer').innerHTML = '<div class="loading">Carregando movimentações e produtos...</div>';
+      document.getElementById('movementsContainer').innerHTML = '<div class="loading">Carregando movimentações, produtos e usuários...</div>';
       loadMovements();
       loadProducts();
+      loadUsers();
+      // attach form submit handler
       document.getElementById('movementForm').addEventListener('submit', handleSave);
     });
 
@@ -300,6 +328,7 @@
       });
     }
 
+    // popula o select de produtos no modal
     function populateProductSelect() {
       const sel = document.getElementById('movementProduct'); sel.innerHTML = '';
       products.forEach(p => {
@@ -307,7 +336,7 @@
         o.value = p.id;
         o.textContent = p.name;
         o.dataset.name = p.name;
-        o.dataset.sku = p.sku ?? '';
+        o.dataset.current_stock = p.stock_qty;
         sel.appendChild(o);
       });
       // update product info display and listen for changes
@@ -316,11 +345,13 @@
       updateProductInfo();
     }
 
+    // atualiza a exibição das informações do produto selecionado (quando o usuário seleciona o produto, aparece o nome e o id dele)
     function updateProductInfo() {
       const sel = document.getElementById('movementProduct');
       const info = document.getElementById('productInfo');
       const nameEl = document.getElementById('productInfoName');
       const idEl = document.getElementById('productInfoId');
+      const currentStockEl = document.getElementById('productInfoCurrentStock');
 
       if (!sel || sel.options.length === 0) {
         info.style.display = 'none';
@@ -338,7 +369,24 @@
       const id = opt.value || '';
       nameEl.textContent = name;
       idEl.textContent = `ID: ${id}`;
+      currentStockEl.textContent = `Estoque Atual: ${opt.dataset.current_stock || '0'}`;
       info.style.display = 'flex';
+    }
+
+    function loadUsers() {
+      $.ajax({
+        url: '/api/users', type: 'GET', dataType: 'json',
+        headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
+        success: function (d) {
+          users = d.users || [];
+          usersLoaded = true;
+          maybeRender();
+        },
+        error: function () {
+          usersLoaded = false;
+          document.getElementById('movementsContainer').innerHTML = '<p>Erro ao carregar usuários.</p>';
+        }
+      });
     }
 
     function loadMovements() {
@@ -354,16 +402,46 @@
     function renderTable() {
       const container = document.getElementById('movementsContainer');
       if (movements.length === 0) { container.innerHTML = '<p>Nenhuma movimentação registrada.</p>'; return; }
-      let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Qtd</th><th>Tipo</th><th>Motivo</th><th>Usuário</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
+      let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Qtd</th><th>Tipo</th><th>Motivo</th><th>Criação</th><th>Atualização</th><th>Ações</th></tr></thead><tbody>';
       movements.forEach(m => {
         const prodLabel = resolveProductLabel(m.product_id);
-        // const created_at = formatDataHora(m.created_at);
-        const tagClass = m.type === 'in' ? 'tag-in' : 'tag-out';
-        const typeLabel = m.type === 'in' ? 'Entrada' : 'Saída';
+        const userCreatedByLabel = resolveUserLabel(m.created_by);
+        const userUpdatedByLabel = resolveUserLabel(m.updated_by);
+        const tagClass = m.movement_type === 'in' ? 'tag-in' : 'tag-out';
+        const typeLabel = m.movement_type === 'in' ? 'Entrada' : 'Saída';
         const typeTag = `<span class="movement-tag ${tagClass}">${typeLabel}</span>`;
-        html += `<tr><td>${m.id}</td><td>${escapeHtml(prodLabel)}</td><td>${m.qty}</td><td>${typeTag}</td><td>${escapeHtml(m.reason || '-')}</td><td>${m.user_id || '-'}</td><td>${m.formatted_date || ''}</td><td>` +
-          `<button class="btn" onclick="openEdit(${m.id})">Editar</button> <button class="btn btn-danger" onclick="deleteMovement(${m.id})">Deletar</button>` +
-          `</td></tr>`;
+
+        // Determina se a movimentação já foi atualizada
+        const wasUpdated = (() => {
+          // Se não existir updated_by ou updated_at/formatado, consideramos NÃO atualizada
+          if (!m.updated_by) return false;
+          if (!m.updated_at && !m.formatted_updated_at) return false;
+          // Se created_at e updated_at existirem e forem iguais => não houve atualização
+          if (m.created_at && m.updated_at && m.created_at === m.updated_at) return false;
+          return true;
+        })();
+
+        const createdCell =
+          `<strong>${escapeHtml(userCreatedByLabel || '-')}</strong> - ${m.formatted_created_at || ''}`;
+
+        const updatedCell = wasUpdated
+          ? `<strong>${escapeHtml(userUpdatedByLabel || '-')}</strong> - ${m.formatted_updated_at || ''}`
+          : `<span class="movement-tag" style="background:#fff3cd;color:#856404;border:1px solid #ffeeba;">Não atualizada</span>`;
+
+        html += `
+        <tr>
+          <td>${m.id}</td>
+          <td>${escapeHtml(prodLabel)}</td>
+          <td>${m.quantity}</td>
+          <td>${typeTag}</td>
+          <td>${escapeHtml(m.reason || '-')}</td>
+          <td>${createdCell}</td>
+          <td>${updatedCell}</td>
+          <td>
+            <button class="btn" onclick="openEdit(${m.id})">Editar</button>
+            <button class="btn btn-danger" onclick="deleteMovement(${m.id})">Deletar</button>
+          </td>
+        </tr>`;
       });
       html += '</tbody></table>';
       container.innerHTML = html;
@@ -376,21 +454,13 @@
       return `${p.name}`;
     }
 
-    // substitui a função manual por uma versão simples usando toLocaleString
-    function formatDataHora(contentDate) {
-      if (!contentDate) return '';
-      const date = new Date(contentDate);
-      if (isNaN(date.getTime())) return contentDate; // fallback se inválida
-
-      return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
+    function resolveUserLabel(userId) {
+      if (!users || users.length === 0) return `#${userId}`;
+      const u = users.find(x => String(x.id) === String(userId));
+      // retorno caso a movimentação não tenha sido editada ainda
+      if (u == null) return userId;
+      if (!u) return `#${userId}`;
+      return `${u.name}`;
     }
 
     function openCreateModal() {
@@ -410,8 +480,8 @@
           const m = data.stock_movement;
           document.getElementById('movementId').value = m.id;
           document.getElementById('movementProduct').value = m.product_id;
-          document.getElementById('movementQty').value = m.qty;
-          document.getElementById('movementType').value = m.type;
+          document.getElementById('movementQuantity').value = m.quantity;
+          document.getElementById('movementType').value = m.movement_type;
           document.getElementById('movementReason').value = m.reason || '';
           document.getElementById('modalTitle').textContent = 'Editar Movimentação';
           // ensure product info updates
@@ -424,8 +494,8 @@
       e.preventDefault();
       const id = document.getElementById('movementId').value;
       const productId = parseInt(document.getElementById('movementProduct').value);
-      const qty = parseInt(document.getElementById('movementQty').value);
-      const type = document.getElementById('movementType').value;
+      const quantity = parseInt(document.getElementById('movementQuantity').value);
+      const movement_type = document.getElementById('movementType').value;
       const reason = document.getElementById('movementReason').value;
 
       // Validações básicas no cliente
@@ -434,22 +504,22 @@
         return;
       }
 
-      if (!qty || isNaN(qty) || qty <= 0) {
+      if (!quantity || isNaN(quantity) || quantity <= 0) {
         showAlert('Quantidade deve ser um valor positivo', 'danger');
         return;
       }
 
-      if (!type) {
+      if (!movement_type) {
         showAlert('Selecione um tipo de movimentação', 'danger');
         return;
       }
 
-      const data = { product_id: productId, qty: qty, type: type, reason: reason };
+      const data = { product_id: productId, quantity: quantity, movement_type: movement_type, reason: reason };
       const url = id ? `/api/stock-movements/update/${id}` : '/api/stock-movements/create';
       const method = id ? 'PUT' : 'POST';
       $.ajax({
         url: url, type: method, contentType: 'application/json', data: JSON.stringify(data), headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
-        success: function () { showAlert('Movimentação salva com sucesso', 'success'); closeModal(); loadMovements(); },
+        success: function () { showAlert('Movimentação salva com sucesso', 'success'); closeModal(); loadMovements(); loadProducts();},
         error: function (xhr) {
           let msg = 'Erro ao salvar';
           try {
@@ -470,8 +540,7 @@
         type: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + apiToken, 'Accept': 'application/json', 'X-CSRF-Token': csrfToken },
         success: function () {
-          s
-          howAlert('Movimentação deletada', 'success');
+          showAlert('Movimentação deletada', 'success');
           loadMovements();
         }, error:
           function (xhr) {

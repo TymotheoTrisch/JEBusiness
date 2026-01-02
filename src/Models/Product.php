@@ -48,11 +48,11 @@ class Product
 
     public function create(array $data)
     {
-        $stmt = $this->pdo->prepare("INSERT INTO products (name, description, price, stock_qty, category_id, image_path, thumbnail_path, is_active) VALUES (:name, :description, :price, :stock_qty, :category_id, :image_path, :thumbnail_path, :is_active)");
+        $stmt = $this->pdo->prepare("INSERT INTO products (name, description, sale_price, stock_qty, category_id, image_path, thumbnail_path, is_active) VALUES (:name, :description, :sale_price, :stock_qty, :category_id, :image_path, :thumbnail_path, :is_active)");
         $stmt->execute([
             ':name' => $data['name'],
             ':description' => $data['description'] ?? null,
-            ':price' => $data['price'],
+            ':sale_price' => $data['sale_price'],
             ':stock_qty' => $data['stock_qty'] ?? 0,
             ':category_id' => $data['category_id'] ?? null,
             ':image_path' => $data['image_path'] ?? './a/a',
@@ -64,12 +64,12 @@ class Product
 
     public function update(int $id, array $data)
     {
-        $stmt = $this->pdo->prepare("UPDATE products SET name = :name, description = :description, price = :price, stock_qty = :stock_qty, category_id = :category_id, image_path = :image_path, thumbnail_path = :thumbnail_path, is_active = :is_active WHERE id = :id");
+        $stmt = $this->pdo->prepare("UPDATE products SET name = :name, description = :description, sale_price = :sale_price, stock_qty = :stock_qty, category_id = :category_id, image_path = :image_path, thumbnail_path = :thumbnail_path, is_active = :is_active WHERE id = :id");
         $stmt->execute([
             ':id' => $id,
             ':name' => $data['name'],
             ':description' => $data['description'] ?? null,
-            ':price' => $data['price'],
+            ':sale_price' => $data['sale_price'],
             ':stock_qty' => $data['stock_qty'] ?? 0,
             ':category_id' => $data['category_id'] ?? null,
             ':image_path' => $data['image_path'] ?? null,

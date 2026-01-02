@@ -2,8 +2,7 @@
 // API routes for Users (uses $router and $apiUserController)
 
 $router->add('GET', '/api/users', function () use ($apiUserController) {
-    // Only admin
-    if (!\Middlewares\ApiAuthMiddleware::checkRole(['admin'])) {
+    if (!\Middlewares\ApiAuthMiddleware::checkRole(['admin', 'vendedor'])) {
         http_response_code(403);
         header('Content-Type: application/json');
         echo json_encode(['error' => 'Acesso negado']);

@@ -7,6 +7,7 @@
 </head>
 <body>
   <h1>Usuários</h1>
+  <button><a href="/home">Voltar</a></button>
   <button onclick="document.getElementById('modal-create').style.display='block'">Novo Usuário</button>
   <table id="users-table" border="1">
     <tr><th>ID</th><th>Nome</th><th>Email</th><th>Role</th><th>Ações</th></tr>
@@ -184,7 +185,7 @@
         };
         if (f.password.value) payload.password = f.password.value;
         fetch('/api/users/update/' + id, {
-          method: 'POST',
+          method: 'PUT',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -211,7 +212,7 @@
         e.preventDefault();
         const id = document.getElementById('delete-id').value;
         fetch('/api/users/delete/' + id, {
-          method: 'POST',
+          method: 'DELETE',
           headers: {
             'Accept': 'application/json',
             'Authorization': 'Bearer ' + apiToken,

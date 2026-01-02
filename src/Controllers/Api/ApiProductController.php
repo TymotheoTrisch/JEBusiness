@@ -59,7 +59,7 @@ class ApiProductController
         $data = $isJson ? json_decode(file_get_contents('php://input'), true) : $_POST;
         $data = $data ?: [];
         
-        if (empty($data['name']) || !isset($data['price'])) {
+        if (empty($data['name']) || !isset($data['sale_price'])) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -102,7 +102,7 @@ class ApiProductController
         }
         
         // verificar se os campos numéricos são válidos e positivos
-        if (isset($data['price']) && (!is_numeric($data['price']) || $data['price'] < 0)) {
+        if (isset($data['sale_price']) && (!is_numeric($data['sale_price']) || $data['sale_price'] < 0)) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -134,10 +134,10 @@ class ApiProductController
 
             $stockMovementModel->create([
                 'product_id' => $product['id'],
-                'qty' => (int)$data['stock_qty'],
-                'type' => 'in',
+                'quantity' => (int)$data['stock_qty'],
+                'movement_type' => 'in',
                 'reason' => 'Saldo inicial do produto ' . ($product['name'] ?? ''),
-                'user_id' => $userId
+                'created_by' => $userId
             ]);
         }
 
@@ -159,7 +159,7 @@ class ApiProductController
         $data = $isJson ? json_decode(file_get_contents('php://input'), true) : $_POST;
         $data = $data ?: [];
         
-        if (empty($data['name']) || !isset($data['price'])) {
+        if (empty($data['name']) || !isset($data['sale_price'])) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
@@ -171,7 +171,7 @@ class ApiProductController
         }
         
         // verificar se os campos numéricos são válidos e positivos
-        if (isset($data['price']) && (!is_numeric($data['price']) || $data['price'] < 0)) {
+        if (isset($data['sale_price']) && (!is_numeric($data['sale_price']) || $data['sale_price'] < 0)) {
             http_response_code(400);
             if ($isJson) {
                 header('Content-Type: application/json; charset=utf-8');
